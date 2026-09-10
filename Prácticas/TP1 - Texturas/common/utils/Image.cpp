@@ -61,6 +61,6 @@ glm::vec4 Image::GetRGBA (int i, int j) const {
 
 void Image::check_indexes (int i, int j) const {
 	cg_assert(i>=0 and i<m_height, "Wrong i coord in Image::setRGB");
-	cg_assert(j>=0 and i<m_width, "Wrong j coord in Image::setRGB");
+	cg_assert(j>=0 and j<m_width, "Wrong j coord in Image::setRGB");
 }
 

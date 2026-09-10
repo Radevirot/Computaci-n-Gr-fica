@@ -19,7 +19,7 @@ current_source=main.cpp
 path_char=\
 [source]
 path=main.cpp
-cursor=246:3
+cursor=348:2
 open=true
 [source]
 path=..\common\utils\ObjMesh.cpp
@@ -80,7 +80,7 @@ path=..\common\utils\FramebufferTexture.cpp
 cursor=0:0
 [source]
 path=..\common\utils\Image.cpp
-cursor=30:0
+cursor=59:1
 open=true
 [source]
 path=..\common\utils\CEVersion.cpp

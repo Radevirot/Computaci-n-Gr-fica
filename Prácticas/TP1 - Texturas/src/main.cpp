@@ -93,6 +93,7 @@ int main() {
 }
 
 
+
 // ===== pasos del renderizado =====
 
 void drawMain() {
@@ -197,9 +198,36 @@ void auxMouseButtonCallback(GLFWwindow* window, int button, int action, int mods
 		
 		xprev = posx; yprev = posy; //guardo las coords como previas
 		
-		//std::cout << "posx: " << posx << " | " << "posy: " << posy << std::endl;
+		/// he vuelto, ahora tengo que hacer lo del radio.
+		/// la formulita para hacer un circulo es (x-xoffset)^2+(y-yoffset)^2=r^2
+		/// los offsets para este caso son los posx y posy que ya calculamos
+		/// le ponemos <= para que rellene el circulo: (x-posx)^2+(y-posy)^2<=r^2
 		
-		image.SetRGB(posy, posx, color); // pinto
+		/// ¿cómo dibujo esos pixeles? ¿un doble for que recorra toda la
+		/// pantalla y dibuje únicamente los pixeles que satisfagan la ecuación?
+		
+		/// no suena mal, pero podría ser mejor, puedo evitar recorrer toda la
+		/// pantalla, solo tengo que revisar el cuadradito comprendido por
+		/// posx, posy +- el radio
+		
+		for (int i=(posy-radius);i<(posy+radius);i++){
+			for(int j=(posx-radius);j<(posx+radius);j++){
+				if ((pow((j-posx),2)+pow((i-posy),2))<=pow(radius,2)){
+					//aca le agrego un checkeo para no pintar si se sale de la imagen
+					if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
+					//aca obtengo el color de la imagen para mezclar los colores transparentes
+					glm::vec3 oldColor = image.GetRGB(i, j);
+					float alpha = color[3];
+					glm::vec3 brushColor = glm::vec3(color);
+					//formulita para el color final, nuestro pincel tiene el peso
+					//del alpha y el color original tiene el resto del peso, el
+					//alpha resultante siempre queda en 1
+					glm::vec3 result = brushColor * alpha + oldColor * (1-alpha);
+					
+					image.SetRGB(i, j, result); // pinto
+				}
+			}
+		}
 		
 		texture.update(image); //actualizo textura
 		
@@ -214,54 +242,138 @@ void auxMouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
 	/// @ToDo: Parte 1: pintar un segmento de ancho "2*radius" en la imagen
 	///                 "image" que se usa como textura
 	
-	std::cout << "Arrastre - X: " << xpos << ", Y: " << ypos << std::endl;
+	//std::cout << "Arrastre - X: " << xpos << ", Y: " << ypos << std::endl;
 	
-	/// me tira las posiciones de la ventana
+/// misma logica de reescalado para pintar donde esta el mouse
 	
-	/// vamos a dibujar un puntito por cada arrastre primero
-	/// copy paste de arriba nomas
-	
-	/// funciona, obviamente cero contiguidad pero es un comienzo
-	/// ahora voy a ver que onda si implemento el algoritmo de linea DDA
-	
-	/// para eso necesito variables globales donde me guardo la pos previa
-	/// porque sino no tengo forma de calcular los dx y dy, voy a optar por
-	/// guardarme la posicion ya calculada previa al SetRGB
-	
-	/// ademas, necesito guardarmela tambien apenas se hace el primer clic
-	/// por lo que voy a modificar el eventito de arriba
-	
-	// recupero altura y ancho total de la textura
 	float imageWidth = image.GetWidth();
 	float imageHeight = image.GetHeight();
 	BufferSize bs = getBufferSize(window);
 	xpos = round(xpos/bs.width*imageWidth);
 	ypos = round((1 - ypos/bs.height)*imageHeight);
+	
+/// acá toca implementar el DDA de línea (Digital Differential Analyzer)
+/// este algoritmo sirve para rasterizar una linea recta entre dos puntos.
+/// o sea, agarrás de input las coordenadas de dos puntos y en base a eso
+/// pintás ciertos pixeles que formen una especie de "línea recta" entre ellos.
 
-	dx = xprev-xpos; dy = yprev-ypos;
+/// para esto vamos a usar la pendiente de la recta, que la calculamos restando
+/// los puntitos y dividiendo las restas (la ecuacion punto-punto).
+
+/// el algoritmo contempla dos situaciones, una donde la X es dominante y la
+/// otra donde la Y es dominante, esto va a dictar cuál de las dos coordenadas
+/// va a tener la pendiente como paso
+
+/// entonces, si se mueve mucho en X (o sea que |dx| es más grande que |dy|)
+/// vamos a ir sumando de a 1 en X y a Y le sumamos la pendiente de la recta,
+/// a esa suma la vamos a ir redondeando para pintar (porque son pixeles, o
+/// sea que son valores enteros, y además el redondeo es parte de lo que nos
+/// garantiza la contiguidad de la linea).
+/// caso inverso si se mueve mucho en Y (|dy| más grande, sumamos 1 en y, sumamos
+/// pendiente a x)
+	
+/// tenemos además que contemplar los casos donde el usuario quiera pintar
+/// para el lado inverso al de crecimiento de los ejes, para esto revisamos
+/// despues de determinar si se mueve mucho en X o en Y si ese movimiento es
+/// positivo o negativo. si es negativo, damos vuelta los puntos y recalculamos
+/// las diferencias acordemente, esto hace que no tengamos que modificar la
+/// condición del loop, ya que la coordenada calculada siempre va a ser mas
+/// pequeña que la actual
+	
+/// de ahí queda lo mas importante, vamos dibujando los puntos interpolados hasta
+/// que alcancen la posicion actual del mouse
+
+
+/// para implementar esto necesito variables globales donde me guardo la pos previa
+/// del mouse en la textura porque sino no tengo forma de calcular los dx y dy.
+/// ademas, necesito guardarmela tambien apenas se hace el primer clic
+/// por lo que voy a modificar el eventito de arriba
+	
+/// AVANCE
+/// ahora que agregué soporte para el radio en el single-click, vamos a meterlo
+/// en el algoritmo de DDA, debería ser bastante copiar y pegar
+	
+/// AVANCE FINAL
+/// implemente soporte para el alpha channel, lo único que hace es detectar
+/// el alpha del pincel y modificar el color real que se va a pintar teniendo
+/// en cuenta el color antiguo, le pone el peso del alpha al color del pincel
+/// y el resto del peso al color original de la imagen
+	
+/// un detalle no menor, para evidenciar el alpha usando el DDA necesitamos
+/// valores extremadamente pequeños, esto es porque el círculo grandote del
+/// pincel se está dibujando una cantidad ridícula de veces y se solapa con
+/// los anteriores, supongo que esto no es necesario fixearlo ya
+	
+	double xcurrent = xpos; double ycurrent = ypos; //necesito estas para guardarlas como previas al final
+	double dx = xpos-xprev; double dy = ypos-yprev;
+	double x; double y;
 	
 	if (abs(dx)>abs(dy)){
 		
 		if(dx<0){
+			double temp;
+			temp = xpos; xpos = xprev; xprev = temp;
+			temp = ypos; ypos = yprev; yprev = temp;
 			dx = xpos-xprev; dy = ypos-yprev;
 		}
 		
+		x = round(xprev); y = yprev;
 		
+		while(x<xpos){
+			for (int i=(y-radius*2);i<(y+radius*2);i++){
+				for(int j=(x-radius*2);j<(x+radius*2);j++){
+					if ((pow((j-x),2)+pow((i-y),2))<=pow(radius*2,2)){
+						if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
+						glm::vec3 oldColor = image.GetRGB(i, j);
+						float alpha = color[3];
+						glm::vec3 brushColor = glm::vec3(color);
+						//formulita para el color final, nuestro pincel tiene el peso
+						//del alpha y el color original tiene el resto del peso, el
+						//alpha resultante siempre queda en 1
+						glm::vec3 result = brushColor * alpha + oldColor * (1-alpha);
+						image.SetRGB(i, j, result); // pinto
+					}
+				}
+			}
+			x++; y+=dy/dx;
+		}
 		
 	} else {
 		
 		if(dy<0){
+			double temp;
+			temp = xpos; xpos = xprev; xprev = temp;
+			temp = ypos; ypos = yprev; yprev = temp;
 			dx = xpos-xprev; dy = ypos-yprev;
+		}
+		
+		x = xprev; y = round(yprev);
+		
+		while(y<ypos){
+			for (int i=(y-radius*2);i<(y+radius*2);i++){
+				for(int j=(x-radius*2);j<(x+radius*2);j++){
+					if ((pow((j-x),2)+pow((i-y),2))<=pow(radius*2,2)){
+						if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
+						glm::vec3 oldColor = image.GetRGB(i, j);
+						float alpha = color[3];
+						glm::vec3 brushColor = glm::vec3(color);
+						//formulita para el color final, nuestro pincel tiene el peso
+						//del alpha y el color original tiene el resto del peso, el
+						//alpha resultante siempre queda en 1
+						glm::vec3 result = brushColor * alpha + oldColor * (1-alpha);
+						image.SetRGB(i, j, result); // pinto
+					}
+				}
+			}
+			y++; x+=dx/dy;
 		}
 		
 	}
 	
-
-	xprev = xpos; yprev = ypos; //guardo las coords como previas
-	
-	image.SetRGB(ypos, xpos, color); // pinto
-	
 	texture.update(image); //actualizo textura
+	xprev = xcurrent; yprev = ycurrent; //guardo las coords como previas
+	
+
 	
 	
 	
