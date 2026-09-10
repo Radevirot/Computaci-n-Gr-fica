@@ -320,9 +320,9 @@ void auxMouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
 		x = round(xprev); y = yprev;
 		
 		while(x<xpos){
-			for (int i=(y-radius*2);i<(y+radius*2);i++){
-				for(int j=(x-radius*2);j<(x+radius*2);j++){
-					if ((pow((j-x),2)+pow((i-y),2))<=pow(radius*2,2)){
+			for (int i=(y-radius);i<(y+radius);i++){
+				for(int j=(x-radius);j<(x+radius);j++){
+					if ((pow((j-x),2)+pow((i-y),2))<=pow(radius,2)){
 						if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
 						glm::vec3 oldColor = image.GetRGB(i, j);
 						float alpha = color[3];
@@ -350,9 +350,9 @@ void auxMouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
 		x = xprev; y = round(yprev);
 		
 		while(y<ypos){
-			for (int i=(y-radius*2);i<(y+radius*2);i++){
-				for(int j=(x-radius*2);j<(x+radius*2);j++){
-					if ((pow((j-x),2)+pow((i-y),2))<=pow(radius*2,2)){
+			for (int i=(y-radius);i<(y+radius);i++){
+				for(int j=(x-radius);j<(x+radius);j++){
+					if ((pow((j-x),2)+pow((i-y),2))<=pow(radius,2)){
 						if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
 						glm::vec3 oldColor = image.GetRGB(i, j);
 						float alpha = color[3];
