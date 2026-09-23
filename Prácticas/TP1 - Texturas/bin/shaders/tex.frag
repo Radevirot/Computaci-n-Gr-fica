@@ -20,10 +20,6 @@ out vec4 fragColor;
 
 void main() {
 	
-	vec4 tex = texture(colorTexture,fragTexCoords);
-	vec3 phong = calcPhong(lightVSPosition, lightColor,
-						   vec3(tex), vec3(tex), specularColor, shininess);
-	fragColor = vec4(phong,tex.a);
-	//fragColor = vec4(fragTexCoords,0.0,1.0);
+	fragColor = vec4(fragTexCoords,1.0,1.0);
 }
 

@@ -27,6 +27,7 @@ glm::vec4 color = { 0.f, 0.f, 0.f, 1.f }; // color actual con el que se pinta en
 //---------------
 double xprev; //globales para las posiciones previas
 double yprev;
+bool enable_texture_shader = false;
 //---------------
 
 Texture texture; // textura (compartida por ambas ventanas)
@@ -37,6 +38,7 @@ Model model_aux; // un quad para cubrir la ventana auxiliar y mostrar la textura
 
 Shader shader_main; // shader para el objeto principal (drawMain)
 Shader shader_aux; // shader para la ventana auxiliar (drawTexture)
+Shader shader_texture; //-- shader para renderizar coordenadas de textura (drawBack)
 
 // callbacks del mouse y auxiliares para los callbacks
 enum class MouseAction { None, ManipulateView, Draw };
@@ -71,6 +73,8 @@ int main() {
 	model_aux = Model::loadSingle("models/texquad", Model::fNoTextures);
 	shader_aux = Shader("shaders/quad");
 	
+	shader_texture = Shader("shaders/tex");
+	
 	// main loop
 	do {
 		glfwMakeContextCurrent(main_window);
@@ -97,18 +101,21 @@ int main() {
 // ===== pasos del renderizado =====
 
 void drawMain() {
-	glEnable(GL_DEPTH_TEST);
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	if (!enable_texture_shader){
+		glEnable(GL_DEPTH_TEST);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		
+		texture.bind();
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		shader_main.use();
+		setMatrixes(main_window, shader_main);
+		shader_main.setLight(glm::vec4{-1.f,1.f,4.f,1.f}, glm::vec3{1.f,1.f,1.f}, 0.35f);
+		shader_main.setMaterial(model_chookity.material);
+		shader_main.setBuffers(model_chookity.buffers);
+		model_chookity.buffers.draw();
+	}
 	
-	texture.bind();
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	shader_main.use();
-	setMatrixes(main_window, shader_main);
-	shader_main.setLight(glm::vec4{-1.f,1.f,4.f,1.f}, glm::vec3{1.f,1.f,1.f}, 0.35f);
-	shader_main.setMaterial(model_chookity.material);
-	shader_main.setBuffers(model_chookity.buffers);
-	model_chookity.buffers.draw();
 }
 
 void drawAux() {
@@ -125,14 +132,21 @@ void drawAux() {
 void drawBack() {
 	glfwMakeContextCurrent(main_window);
 	glDisable(GL_MULTISAMPLE);
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 	/// @ToDo: Parte 2: renderizar el modelo en 3d con un nuevo shader de forma 
 	///                 que queden las coordenadas de textura de cada fragmento
 	///                 en el back-buffer de color
+	shader_texture.use();
+	setMatrixes(main_window, shader_texture);
+	shader_texture.setBuffers(model_chookity.buffers);
+	model_chookity.buffers.draw();
+	
 	
 	glEnable(GL_MULTISAMPLE);
 	glFlush();
-	glFinish();
+	//glFinish();
 }
 
 void drawImGui(Window &window) {
@@ -141,6 +155,7 @@ void drawImGui(Window &window) {
 	window.ImGuiDialog("Settings",[&](){
 		ImGui::SliderFloat("Radius",&radius,.5,50);
 		ImGui::ColorEdit4("Color",&(color[0]),0);
+		ImGui::Checkbox("Texture shader", &enable_texture_shader);
 		
 		static std::vector<std::pair<const char *, ImVec4>> pallete = { // colores predefindos
 			{"white" , {1.f,1.f,1.f,1.f}},
@@ -221,7 +236,7 @@ void auxMouseButtonCallback(GLFWwindow* window, int button, int action, int mods
 					glm::vec3 brushColor = glm::vec3(color);
 					//formulita para el color final, nuestro pincel tiene el peso
 					//del alpha y el color original tiene el resto del peso, el
-					//alpha resultante siempre queda en 1
+					//alpha resultante siempre queda en 1, es una interp afin
 					glm::vec3 result = brushColor * alpha + oldColor * (1-alpha);
 					
 					image.SetRGB(i, j, result); // pinto
@@ -395,6 +410,19 @@ void mainMouseButtonCallback(GLFWwindow* window, int button, int action, int mod
 		
 		/// @ToDo: Parte 2: pintar un punto de radio "radius" en la imagen
 		///                 "image" que se usa como textura
+		drawBack();
+		glReadBuffer(GL_BACK);
+		glm::vec4 color_value;
+		
+		double x; double y;
+		glfwGetCursorPos(window, &x, &y);
+		BufferSize bs = getBufferSize(window);
+		y = bs.height-y;
+		
+		
+		glReadPixels((x-1),(y-1),1,1, GL_RGBA, GL_FLOAT, &(color_value[0]));
+		std::cout << "Color value: {" << color_value[0] << ", " << color_value[1] << ", " << color_value[2] << ", " << color_value[3] << "}" << std::endl;
+		
 		
 	} else {
 		if (mouse_action==MouseAction::ManipulateView)
