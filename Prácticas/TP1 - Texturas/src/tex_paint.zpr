@@ -15,11 +15,11 @@ tab_width=4
 tab_use_spaces=0
 explorer_path=..\bin\shaders
 inherits_from=
-current_source=tex.frag
+current_source=main.cpp
 path_char=\
 [source]
 path=main.cpp
-cursor=137:3
+cursor=419:18
 open=true
 [source]
 path=..\common\utils\ObjMesh.cpp
@@ -139,7 +139,7 @@ cursor=0:0
 open=true
 [other]
 path=..\bin\shaders\main.frag
-cursor=26:33
+cursor=25:0
 open=true
 [other]
 path=..\bin\shaders\main.vert
@@ -153,11 +153,11 @@ open=true
 path=..\bin\shaders\quad.vert
 cursor=0:0
 [other]
-path=tex.frag
+path=..\bin\shaders\tex.frag
 cursor=0:0
 open=true
 [other]
-path=tex.vert
+path=..\bin\shaders\tex.vert
 cursor=0:0
 open=true
 [config]
