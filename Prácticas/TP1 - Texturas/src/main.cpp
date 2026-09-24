@@ -27,7 +27,9 @@ glm::vec4 color = { 0.f, 0.f, 0.f, 1.f }; // color actual con el que se pinta en
 //---------------
 double xprev; //globales para las posiciones previas
 double yprev;
-bool enable_texture_shader = false;
+bool enable_texture_shader = false; //para activar/desactivar el shader de las coords de textura
+void paintCircle(double posx, double posy, float imageHeight, float imageWidth, int alpha_correction);
+void lineDDA(double xpos, double ypos, float imageHeight, float imageWidth);
 //---------------
 
 Texture texture; // textura (compartida por ambas ventanas)
@@ -78,7 +80,11 @@ int main() {
 	// main loop
 	do {
 		glfwMakeContextCurrent(main_window);
-		drawMain();
+		if (enable_texture_shader){
+			drawBack();
+		} else {
+			drawMain();
+		}
 		drawImGui(main_window);
 		glFinish();
 		glfwSwapBuffers(main_window);
@@ -101,20 +107,18 @@ int main() {
 // ===== pasos del renderizado =====
 
 void drawMain() {
-	if (!enable_texture_shader){
-		glEnable(GL_DEPTH_TEST);
-		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-		
-		texture.bind();
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		shader_main.use();
-		setMatrixes(main_window, shader_main);
-		shader_main.setLight(glm::vec4{-1.f,1.f,4.f,1.f}, glm::vec3{1.f,1.f,1.f}, 0.35f);
-		shader_main.setMaterial(model_chookity.material);
-		shader_main.setBuffers(model_chookity.buffers);
-		model_chookity.buffers.draw();
-	}
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	
+	texture.bind();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	shader_main.use();
+	setMatrixes(main_window, shader_main);
+	shader_main.setLight(glm::vec4{-1.f,1.f,4.f,1.f}, glm::vec3{1.f,1.f,1.f}, 0.35f);
+	shader_main.setMaterial(model_chookity.material);
+	shader_main.setBuffers(model_chookity.buffers);
+	model_chookity.buffers.draw();
 	
 }
 
@@ -177,6 +181,79 @@ void drawImGui(Window &window) {
 	});
 }
 
+// ====== funciones auxiliares para dibujar ======
+
+void paintCircle(double posx, double posy, float imageHeight, float imageWidth, int alpha_correction){
+	
+	for (int i=(posy-radius);i<(posy+radius);i++){
+		for(int j=(posx-radius);j<(posx+radius);j++){
+			if ((pow((j-posx),2)+pow((i-posy),2))<=pow(radius,2)){
+				//aca le agrego un checkeo para no pintar si se sale de la imagen
+				if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
+				//aca obtengo el color de la imagen para mezclar los colores transparentes
+				glm::vec3 oldColor = image.GetRGB(i, j);
+				float alpha = (color[3]==1.0) ? color[3] : color[3]/alpha_correction;
+				glm::vec3 brushColor = glm::vec3(color);
+				//formulita para el color final, nuestro pincel tiene el peso
+				//del alpha y el color original tiene el resto del peso, el
+				//alpha resultante siempre queda en 1, es una interp afin
+				glm::vec3 result = brushColor * alpha + oldColor * (1-alpha);
+				
+				image.SetRGB(i, j, result); // pinto
+			}
+		}
+	}
+	
+}
+
+void lineDDA(double xpos, double ypos, float imageHeight, float imageWidth){
+	double xcurrent = xpos; double ycurrent = ypos; //necesito estas para guardarlas como previas al final
+	double dx = xpos-xprev; double dy = ypos-yprev;
+	double x; double y;
+	int alpha_correction = (radius<1.0) ? 1 : radius/2;
+	
+	if (abs(dx)>abs(dy)){
+		
+		if(dx<0){
+			double temp;
+			temp = xpos; xpos = xprev; xprev = temp;
+			temp = ypos; ypos = yprev; yprev = temp;
+			dx = xpos-xprev; dy = ypos-yprev;
+		}
+		
+		x = round(xprev); y = yprev;
+		
+		while(x<xpos){
+			paintCircle(x, y, imageHeight, imageWidth, alpha_correction);
+			x++; y+=dy/dx;
+		}
+		
+	} else {
+		
+		if(dy<0){
+			double temp;
+			temp = xpos; xpos = xprev; xprev = temp;
+			temp = ypos; ypos = yprev; yprev = temp;
+			dx = xpos-xprev; dy = ypos-yprev;
+		}
+		
+		x = xprev; y = round(yprev);
+		
+		while(y<ypos){
+			paintCircle(x, y, imageHeight, imageWidth, alpha_correction);
+			y++; x+=dx/dy;
+		}
+		
+	}
+	
+	xprev = xcurrent; yprev = ycurrent; //guardo las coords como previas
+}
+
+
+
+
+
+
 
 
 // ===== callbacks de la ventana auxiliar (textura) =====
@@ -225,24 +302,10 @@ void auxMouseButtonCallback(GLFWwindow* window, int button, int action, int mods
 		/// pantalla, solo tengo que revisar el cuadradito comprendido por
 		/// posx, posy +- el radio
 		
-		for (int i=(posy-radius);i<(posy+radius);i++){
-			for(int j=(posx-radius);j<(posx+radius);j++){
-				if ((pow((j-posx),2)+pow((i-posy),2))<=pow(radius,2)){
-					//aca le agrego un checkeo para no pintar si se sale de la imagen
-					if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
-					//aca obtengo el color de la imagen para mezclar los colores transparentes
-					glm::vec3 oldColor = image.GetRGB(i, j);
-					float alpha = color[3];
-					glm::vec3 brushColor = glm::vec3(color);
-					//formulita para el color final, nuestro pincel tiene el peso
-					//del alpha y el color original tiene el resto del peso, el
-					//alpha resultante siempre queda en 1, es una interp afin
-					glm::vec3 result = brushColor * alpha + oldColor * (1-alpha);
-					
-					image.SetRGB(i, j, result); // pinto
-				}
-			}
-		}
+		std::cout << "pos - x:" << posx << ", y:" << posy << std::endl;
+		
+		paintCircle(posx, posy, imageHeight, imageWidth, 1);
+		
 		
 		texture.update(image); //actualizo textura
 		
@@ -319,76 +382,13 @@ void auxMouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
 /// pincel se está dibujando una cantidad ridícula de veces y se solapa con
 /// los anteriores, supongo que esto no es necesario fixearlo ya
 	
-	double xcurrent = xpos; double ycurrent = ypos; //necesito estas para guardarlas como previas al final
-	double dx = xpos-xprev; double dy = ypos-yprev;
-	double x; double y;
+/// AVANCE
+/// si era necesario fixear lo de alpha, use un factor de correccion que se
+/// basa en el radio del pincel
 	
-	if (abs(dx)>abs(dy)){
-		
-		if(dx<0){
-			double temp;
-			temp = xpos; xpos = xprev; xprev = temp;
-			temp = ypos; ypos = yprev; yprev = temp;
-			dx = xpos-xprev; dy = ypos-yprev;
-		}
-		
-		x = round(xprev); y = yprev;
-		
-		while(x<xpos){
-			for (int i=(y-radius);i<(y+radius);i++){
-				for(int j=(x-radius);j<(x+radius);j++){
-					if ((pow((j-x),2)+pow((i-y),2))<=pow(radius,2)){
-						if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
-						glm::vec3 oldColor = image.GetRGB(i, j);
-						float alpha = color[3];
-						glm::vec3 brushColor = glm::vec3(color);
-						//formulita para el color final, nuestro pincel tiene el peso
-						//del alpha y el color original tiene el resto del peso, el
-						//alpha resultante siempre queda en 1
-						glm::vec3 result = brushColor * alpha + oldColor * (1-alpha);
-						image.SetRGB(i, j, result); // pinto
-					}
-				}
-			}
-			x++; y+=dy/dx;
-		}
-		
-	} else {
-		
-		if(dy<0){
-			double temp;
-			temp = xpos; xpos = xprev; xprev = temp;
-			temp = ypos; ypos = yprev; yprev = temp;
-			dx = xpos-xprev; dy = ypos-yprev;
-		}
-		
-		x = xprev; y = round(yprev);
-		
-		while(y<ypos){
-			for (int i=(y-radius);i<(y+radius);i++){
-				for(int j=(x-radius);j<(x+radius);j++){
-					if ((pow((j-x),2)+pow((i-y),2))<=pow(radius,2)){
-						if (i<0 || j<0 || i>(imageHeight-1) || j>(imageWidth-1)) {continue;}
-						glm::vec3 oldColor = image.GetRGB(i, j);
-						float alpha = color[3];
-						glm::vec3 brushColor = glm::vec3(color);
-						//formulita para el color final, nuestro pincel tiene el peso
-						//del alpha y el color original tiene el resto del peso, el
-						//alpha resultante siempre queda en 1
-						glm::vec3 result = brushColor * alpha + oldColor * (1-alpha);
-						image.SetRGB(i, j, result); // pinto
-					}
-				}
-			}
-			y++; x+=dx/dy;
-		}
-		
-	}
+	lineDDA(xpos, ypos, imageHeight, imageWidth);
 	
 	texture.update(image); //actualizo textura
-	xprev = xcurrent; yprev = ycurrent; //guardo las coords como previas
-	
-
 	
 	
 	
@@ -410,19 +410,45 @@ void mainMouseButtonCallback(GLFWwindow* window, int button, int action, int mod
 		
 		/// @ToDo: Parte 2: pintar un punto de radio "radius" en la imagen
 		///                 "image" que se usa como textura
-		drawBack();
-		glReadBuffer(GL_BACK);
-		glm::vec4 color_value;
 		
 		double x; double y;
 		glfwGetCursorPos(window, &x, &y);
 		BufferSize bs = getBufferSize(window);
 		y = bs.height-y;
 		
+		drawBack();
 		
-		glReadPixels((x-1),(y-1),1,1, GL_RGBA, GL_FLOAT, &(color_value[0]));
-		std::cout << "Color value: {" << color_value[0] << ", " << color_value[1] << ", " << color_value[2] << ", " << color_value[3] << "}" << std::endl;
+		float depth_value;
+		glReadPixels(x-1,y-1,1,1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth_value);
+		std::cout << "depth: " << depth_value << std::endl;
 		
+		if (depth_value != 1.0){
+			glReadBuffer(GL_BACK);
+			glm::vec4 color_value;
+			
+			unsigned char pixel[4];
+			glReadPixels((x-1),(y-1),1,1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+			//std::cout << "Color value: {" << color_value[0] << ", " << color_value[1] << ", " << color_value[2] << ", " << color_value[3] << "}" << std::endl;
+			
+			uint16_t s16 = (uint16_t(pixel[0]) << 8) | pixel[1];
+			uint16_t t16 = (uint16_t(pixel[2]) << 8) | pixel[3];
+			
+			float s = float(s16)/65535.0f;
+			float t = float(t16)/65535.0f;
+			
+			float imageWidth = image.GetWidth();
+			float imageHeight = image.GetHeight();
+			
+			double posx = round(s*imageWidth);
+			double posy = round(t*imageHeight);
+			
+			xprev = posx; yprev = posy; //guardo las coords como previas
+			
+			std::cout << "texpos - x:" << posx << ", y:" << posy << std::endl;
+			
+			paintCircle(posx, posy, imageHeight, imageWidth, 1);
+			texture.update(image); //actualizo textura
+		}
 		
 	} else {
 		if (mouse_action==MouseAction::ManipulateView)
@@ -440,5 +466,41 @@ void mainMouseMoveCallback(GLFWwindow* window, double xpos, double ypos) {
 	
 	/// @ToDo: Parte 2: pintar un segmento de ancho "2*radius" en la imagen
 	///                 "image" que se usa como textura
+	
+	double x; double y;
+	glfwGetCursorPos(window, &x, &y);
+	BufferSize bs = getBufferSize(window);
+	y = bs.height-y;
+	
+	drawBack();
+	glReadBuffer(GL_DEPTH);
+	float depth_value;
+	glReadPixels(x-1,y-1,1,1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth_value);
+	
+	if (depth_value != 1.0){
+		glReadBuffer(GL_BACK);
+		glm::vec4 color_value;
+		
+		unsigned char pixel[4];
+		glReadPixels((x-1),(y-1),1,1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+		//std::cout << "Color value: {" << color_value[0] << ", " << color_value[1] << ", " << color_value[2] << ", " << color_value[3] << "}" << std::endl;
+		
+		uint16_t s16 = (uint16_t(pixel[0]) << 8) | pixel[1];
+		uint16_t t16 = (uint16_t(pixel[2]) << 8) | pixel[3];
+		
+		float s = float(s16)/65535.0f;
+		float t = float(t16)/65535.0f;
+		
+		float imageWidth = image.GetWidth();
+		float imageHeight = image.GetHeight();
+		
+		double posx = round(s*imageWidth);
+		double posy = round(t*imageHeight);
+		
+		//std::cout << "texpos - x:" << posx << ", y:" << posy << std::endl;
+		
+		lineDDA(posx, posy, imageHeight, imageWidth);
+		texture.update(image); //actualizo textura
+	}
 	
 }

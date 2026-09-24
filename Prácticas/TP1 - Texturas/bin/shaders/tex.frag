@@ -19,7 +19,19 @@ out vec4 fragColor;
 #include "funcs/calcPhong.frag"
 
 void main() {
+	uint s16 = uint(fragTexCoords.x * 65535.0);
+	uint t16 = uint(fragTexCoords.y * 65535.0);
 	
-	fragColor = vec4(fragTexCoords,1.0,1.0);
+	uint sHigh = (s16 >> 8u) & 0xFFu;
+	uint sLow = s16 & 0xFFu;
+	uint tHigh = (t16 >> 8u) & 0xFFu;
+	uint tLow = t16 & 0xFFu;
+	
+	fragColor = vec4(
+					 float(sHigh) / 255.0,
+					 float(sLow) / 255.0,
+					 float(tHigh) / 255.0,
+					 float(tLow) / 255.0
+	);
 }
 
