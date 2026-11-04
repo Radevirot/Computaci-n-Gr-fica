@@ -18,7 +18,7 @@ current_source=main.cpp
 path_char=\
 [source]
 path=main.cpp
-cursor=263:32
+cursor=325:32
 marker=146
 open=true
 [source]
@@ -129,7 +129,7 @@ path=..\common\utils\BezierRenderer.hpp
 cursor=17:31
 [header]
 path=SubDivMesh.hpp
-cursor=33:26
+cursor=57:1
 open=true
 [header]
 path=SubDivMeshRenderer.hpp

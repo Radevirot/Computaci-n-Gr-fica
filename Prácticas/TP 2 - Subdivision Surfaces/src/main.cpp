@@ -202,10 +202,10 @@ void subdivide(SubDivMesh &mesh) {
 	
 	for (int i = 0 ; i < elementAmount ; i++){ //elementos
 		for (int j = 0 ; j < mesh.e[i].nv ; j++){ //aristas de cada elemento
-			std::cout << mesh.e[i][j] << " - " << mesh.e[i][j+1] << std::endl;
+			//std::cout << mesh.e[i][j] << " - " << mesh.e[i][j+1] << std::endl;
 			
-			n1 = mesh.e[i][j];
-			n2 = mesh.e[i][j+1];
+			int n1 = mesh.e[i][j]; //nodo 1 de la a arista
+			int n2 = mesh.e[i][j+1]; //nodo 2 de la arista
 			
 			// reviso si la arista ya fue procesada
 			if (elmapa.find(Arista(n1,n2))!=elmapa.end()){
@@ -216,6 +216,27 @@ void subdivide(SubDivMesh &mesh) {
 				// reviso si es arista interior o exterior
 				if (mesh.e[i].v[j] != -1){ //arista interior
 					// calcular posición para interior
+					// tengo que promediar los dos extremos de la arista con
+					// los centroides de las dos caras que toca
+					
+					// una de las dos es la cara actual
+					Nodo e1C = mesh.n[(nodeAmount+i)];
+					// para la otra tengo que revisar el vecino que
+					// toca la arista
+					Nodo e2C = mesh.n[(nodeAmount+mesh.e[i].v[j])];
+					
+					float x, y, z;
+					x = (mesh.n[n1].p.x + mesh.n[n2].p.x + e1C.p.x + e2C.p.x) / 4;
+					y = (mesh.n[n1].p.y + mesh.n[n2].p.y + e1C.p.y + e2C.p.y) / 4;
+					z = (mesh.n[n1].p.z + mesh.n[n2].p.z + e1C.p.z + e2C.p.z) / 4;
+					
+					glm::vec3 pos(x,y,z);
+					Nodo ntemp(pos);
+					//guardar arista
+					elmapa[Arista(n1,n2)] = mesh.n.size();
+					mesh.n.push_back(ntemp);
+					
+					
 				} else { //arista de frontera
 					// calcular posición para frontera
 					float x, y, z;
@@ -243,6 +264,54 @@ void subdivide(SubDivMesh &mesh) {
 	//      Para encontrar los nodos de las aristas usar el mapa que armaron en el paso 2
 	//      Ordenar los nodos de todos los elementos nuevos con un mismo criterio (por ej, 
 	//      siempre poner primero al centroide del elemento), para simplificar el paso 4.
+	
+//	void makeVecinos();
+//	void agregarElemento(int n0, int n1, int n2, int n3=-1);
+//	void reemplazarElemento(int ie, int n0, int n1, int n2, int n3=-1);
+	
+	for (int i = 0; i<elementAmount ; i++){
+		
+		Elemento original = mesh.e[i];
+		
+		for (int j = 0; j<(original.nv); j++){
+			
+			// recuperamos el nodo actual, anterior y siguiente para obtener
+			// los nodos de las aristas, como el coso este es cíclico vamos
+			// a agarrar la j+1 como la actual y la j como la anterior
+			
+			int anterior, actual, siguiente;
+			anterior = original[j];
+			actual = original[j+1];
+			siguiente = original[j+2];
+			
+			// de paso antes vamos a agarrar el centroide de la cara esta 
+			
+			int nC = nodeAmount+i;
+			
+			// recuperamos los nodos de las aristas
+			
+			int n1, n2;
+			n1 = elmapa[Arista(anterior,actual)];
+			n2 = elmapa[Arista(actual,siguiente)];
+			
+			
+			if (j==0){
+				mesh.reemplazarElemento(i, nC, n1, actual, n2);
+			} else {
+				mesh.agregarElemento(nC, n1, actual, n2);
+			}
+			
+			
+		}
+		
+	}
+	
+	mesh.makeVecinos();
+	
+	
+	
+	
+	
 	//  4) Calcular las nuevas posiciones de los nodos originales
 	//      Para nodos interiores: (4r-f+(n-3)p)/n
 	//         f=promedio de nodos interiores de las caras (los agregados en el paso 1)
@@ -255,6 +324,31 @@ void subdivide(SubDivMesh &mesh) {
 	//      Ojo: en el paso 3 cambio toda la SubDivMesh, analizar donde quedan en los nuevos 
 	//      elementos (¿de que tipo son?) los nodos de las caras y los de las aristas 
 	//      que se agregaron antes.
+	
+	float xF=0,yF=0,zF=0;
+	
+	for (int i = 0; i<nodeAmount ; i++){
+		
+		
+		
+	}
+	
+	
+	
+	
+	for (int i = 0; i<nodeAmount ; i++){
+		
+		
+		
+	}
+	
+	
+	
+	
+	
+	
+	
+	
 	// tips:
 	//   no es necesario cambiar ni agregar nada fuera de este método, (con Mapa como 
 	//     estructura auxiliar alcanza)
