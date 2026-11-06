@@ -67,7 +67,7 @@ float calcShadow(vec4 fragPosLightSpace) {
 	// esto hace que las sombras no salgan de donde deberían en los objetos:
 	// como estamos achicando la profundidad actual, el checkeo de la condicion
 	// acaba haciendo que se iluminen partes que aún deberían estar oscuras y
-	// que las sombras comiencen más tardes y/o desplazadas de las posiciones
+	// que las sombras comiencen más tarde y/o desplazadas de las posiciones
 	// de los objetos. 
 	
 	// SOLUCIÓN 2:
@@ -105,17 +105,17 @@ float calcShadow(vec4 fragPosLightSpace) {
 	
 	float shadow = 0.0f;
 	
-	vec2 texelSize = 2.0f / textureSize(depthTexture,0);
+	vec2 texelSize = texScaleFactor / textureSize(depthTexture,0);
 	
-	for(int x = -1; x <= 1; ++x)
+	for(int x = -samples; x <= samples; ++x)
 	{
-		for(int y = -1; y <= 1; ++y)
+		for(int y = -samples; y <= samples; ++y)
 		{
-			float pcfDepth = texture(depthTexture, projCoords.xy + vec2(x, y) * texelSize).r; 
-			shadow += currentDepth - desvio > pcfDepth ? 1.0 : 0.0;        
+			float pcf = texture(depthTexture, projCoords.xy + vec2(x, y) * texelSize).r; 
+			shadow += currentDepth - desvio > pcf ? 1.0 : 0.0;        
 		}    
 	}
-	shadow /= 9.0;
+	shadow /= ((samples*2)+1)*((samples*2)+1);
 	
 	return shadow;
 	

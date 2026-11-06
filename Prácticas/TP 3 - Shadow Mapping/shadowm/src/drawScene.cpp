@@ -29,8 +29,37 @@ void drawModel(Window &window, const Model &model, const glm::mat4 &m, int pass)
 									  glm::vec3( 0.0f, 0.0f,  0.0f),
 									  glm::vec3( 0.0f, 1.0f,  0.0f));
 	
-	constexpr float width = 6.f, near_plane = 0.5f, far_plane = 10.f;
+	constexpr float width = 4.f, near_plane = 0.5f, far_plane = 10.f;
 	glm::mat4 lightProjection = glm::ortho(-width, width, -width, width, near_plane, far_plane);
+	
+	
+	// La matriz de proyeccion de la luz esta armada como una proyeccion ortogonal
+	// conformada por el tamaño del frustum (sus 4 lados, el plano cerano y el plano lejano).
+	
+	// Al usar una proyeccion ortogonal, es como si los rayos de luz viniesen desde
+	// el infinito en la posicion donde esta la luz, pero esto no simula correctamente
+	// una luz con posicion real dentro de la escena, para ese caso seria necesaria
+	// una proyeccion perspectiva.
+	
+	
+	// En mi cabeza tiene sentido decir que si el espaciamiento entre los planos
+	// znear y zfar es más pequeño, debería tener mayor precisión sobre la
+	// nueva zona donde quede el frustum, ya que tengo menos espacio asignado
+	// a la misma cantidad de texeles.
+	
+	// Ademas, se puede reducir el ancho del cuadro del frustum, esto tambien
+	// crearia un efecto similar, donde es posible obtener mayor "definicion"
+	// de texeles sin necesariamente aumentar la resolucion del shadowmap
+	
+	
+	// Hay dos posibilidades principales que causan fallos al modificar la
+	// matriz. La primera es si el plano znear está muy lejos o el zfar demasiado
+	// cerca, de tal forma que los valores de profunidad no pueden ser calculados
+	// para ciertas partes del shadowmap.
+	// La segunda es si el tamaño del ancho del frustum es demasiado pequeño
+	// y quedan partes del shadowmap fuera del frustum, en este caso no
+	// podríamos encontrar a qué posición del shadowmap corresponde un fragmento.
+	
 	
 	shader.setUniform("lightViewMatrix",lightView);
 	shader.setUniform("lightProjectionMatrix",lightProjection);

@@ -25,6 +25,9 @@ Model model_chookity, model_teapot, model_suzanne, model_floor_flat, model_floor
 glm::vec4 lightPosition;
 float angle_light = 0.f;
 float desvio = 0.005f; // agrego el desvio aca para modificarlo con el slider
+float texel_scale_factor = 1.0f; // agrego un factor de escalado de los texeles del shadowmap para modificar con el slider
+int texel_sample_amount = 1; // esto determina la cantidad de texeles a considerar a la hora de promediar
+int texel_kernel_size = 2*texel_sample_amount+1;
 bool flat_floor = false, rotate_light = true,
 	 calc_shadow_map = true, display_shadow_map = false,
 	 shadow_map_front_culling = true,
@@ -103,9 +106,13 @@ int main() {
 			shadow_map.bindTexture(0);
 			shader_phong.use();
 			shader_phong.setUniform("desvio", desvio);
+			shader_phong.setUniform("texScaleFactor", texel_scale_factor);
+			shader_phong.setUniform("samples", texel_sample_amount);
 			
 			shader_texture.use();
 			shader_texture.setUniform("desvio", desvio);
+			shader_texture.setUniform("texScaleFactor", texel_scale_factor);
+			shader_texture.setUniform("samples", texel_sample_amount);
 			
 			drawScene(window, 2); // 2 -> usar los shaders "phong" y "texture"
 			
@@ -137,7 +144,7 @@ int main() {
 				}
 				
 				if (ImGui::BeginTabItem("Opciones agregadas")) {
-					ImGui::Checkbox("Shadow Map Front Culling", &shadow_map_front_culling);
+					ImGui::Checkbox("ON: Front Culling | OFF: Back Culling", &shadow_map_front_culling);
 					ImGui::SliderFloat("Bias", &desvio, -0.005f, 0.05f);
 					
 					const int resolutions[] = { 1024, 2048, 4096, 8192 };
@@ -153,6 +160,11 @@ int main() {
 														FramebufferTexture::Depth
 														);
 					}
+					
+					ImGui::SliderFloat("Texel Scale Factor", &texel_scale_factor,1.0f,5.0f);
+					ImGui::Text("Square size: %d x %d", texel_kernel_size, texel_kernel_size);
+					if (ImGui::SliderInt("Sample Size", &texel_sample_amount,1,3)) texel_kernel_size = 2*texel_sample_amount+1;;
+					
 					
 					ImGui::EndTabItem();
 				}
