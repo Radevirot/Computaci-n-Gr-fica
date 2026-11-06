@@ -24,8 +24,10 @@ Shader shader_texture, shader_phong, shader_smap, shader_light;
 Model model_chookity, model_teapot, model_suzanne, model_floor_flat, model_floor_random, model_light, model_crate;
 glm::vec4 lightPosition;
 float angle_light = 0.f;
+float desvio = 0.005f; // agrego el desvio aca para modificarlo con el slider
 bool flat_floor = false, rotate_light = true,
 	 calc_shadow_map = true, display_shadow_map = false,
+	 shadow_map_front_culling = true,
 	 shaders_ok = true;
 
 int shadow_map_resolution = 1024;
@@ -86,7 +88,8 @@ int main() {
 		// generate shadow map
 		shadow_map.bindFramebuffer(true);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_CULL_FACE); glCullFace(GL_FRONT);
+		glEnable(GL_CULL_FACE);
+		shadow_map_front_culling? glCullFace(GL_FRONT) : glCullFace(GL_BACK);
 		if (calc_shadow_map) drawScene(window, 1); // 1 -> usar el shader "shadow_map"
 		glDisable(GL_CULL_FACE);
 		
@@ -98,6 +101,12 @@ int main() {
 			// render scene
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			shadow_map.bindTexture(0);
+			shader_phong.use();
+			shader_phong.setUniform("desvio", desvio);
+			
+			shader_texture.use();
+			shader_texture.setUniform("desvio", desvio);
+			
 			drawScene(window, 2); // 2 -> usar los shaders "phong" y "texture"
 			
 			// light
@@ -111,15 +120,53 @@ int main() {
 		
 		// settings sub-window
 		window.ImGuiDialog("CG Example", [&](){
-			ImGui::Checkbox("Generate Shadow Map (S)", &calc_shadow_map);
-			ImGui::Checkbox("Display Shadow Map (D)", &display_shadow_map);
-			ImGui::Checkbox("Flat Floor (F)", &flat_floor);
-			ImGui::Checkbox("Rotate Light (L)", &rotate_light);
-			ImGui::SliderAngle("Light Angle", &angle_light,-180,+180);
-			if (ImGui::Button("Reload Shaders (F5)"))
-				reloadShaders();
-			ImGui::Text(shaders_ok?"   Shaders compilation: Ok":"    Shaders compilation: ERROR");
+			
+			if (ImGui::BeginTabBar("Settings")) {
+				
+				if (ImGui::BeginTabItem("General")) {
+					ImGui::Checkbox("Generate Shadow Map (S)", &calc_shadow_map);
+					ImGui::Checkbox("Display Shadow Map (D)", &display_shadow_map);
+					ImGui::Checkbox("Flat Floor (F)", &flat_floor);
+					ImGui::Checkbox("Rotate Light (L)", &rotate_light);
+					ImGui::SliderAngle("Light Angle", &angle_light,-180,+180);
+					if (ImGui::Button("Reload Shaders (F5)"))
+						reloadShaders();
+					ImGui::Text(shaders_ok?"   Shaders compilation: Ok":"    Shaders compilation: ERROR");
+					
+					ImGui::EndTabItem();
+				}
+				
+				if (ImGui::BeginTabItem("Opciones agregadas")) {
+					ImGui::Checkbox("Shadow Map Front Culling", &shadow_map_front_culling);
+					ImGui::SliderFloat("Bias", &desvio, -0.005f, 0.05f);
+					
+					const int resolutions[] = { 1024, 2048, 4096, 8192 };
+					static int selected_resolution = 0;
+					ImGui::Text("Shadow Map Resolution: %d", shadow_map_resolution);
+					if (ImGui::SliderInt(" ", &selected_resolution, 0, 3)) {
+						
+						shadow_map_resolution = resolutions[selected_resolution];
+						
+						shadow_map = FramebufferTexture(
+														shadow_map_resolution,
+														shadow_map_resolution,
+														FramebufferTexture::Depth
+														);
+					}
+					
+					ImGui::EndTabItem();
+				}
+				
+				ImGui::EndTabBar();
+			}
+			
+		
+			
+			
+			
+			
 		});
+		
 		
 		// finish frame
 		window.finishFrame();
