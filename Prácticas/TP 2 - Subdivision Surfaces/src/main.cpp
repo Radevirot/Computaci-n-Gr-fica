@@ -327,20 +327,20 @@ void subdivide(SubDivMesh &mesh) {
 	
 	float xF=0,yF=0,zF=0;
 	
-	for (int i = 0; i<nodeAmount ; i++){
+	//for (int i = 0; i<nodeAmount ; i++){
 		
 		
 		
-	}
+	//}
 	
 	
 	
 	
-	for (int i = 0; i<nodeAmount ; i++){
+	//for (int i = 0; i<nodeAmount ; i++){
 		
 		
 		
-	}
+	//}
 	
 	
 	

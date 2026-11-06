@@ -171,7 +171,7 @@ path=..\bin\shaders\shadow_map.frag
 cursor=0:0
 [other]
 path=..\bin\shaders\funcs\calcColor.frag
-cursor=93:70
+cursor=28:30
 open=true
 [other]
 path=..\bin\shaders\depth.vert
